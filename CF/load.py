@@ -162,7 +162,6 @@ def get_share_movies(user1_movies, user2_movies):
     '''
     获得user1和user2评价的电影列表交集
     '''
-    share = []
     share = [val for val in user1_movies if val in user2_movies]
     return share
 
@@ -170,7 +169,6 @@ def get_union_movies(user1_movies, user2_movies):
     '''
     获得user1和user2有评价的电影的并集
     '''
-    union = []
     union = list(set(user1_movies).union(set(user2_movies)))
     return union
 
@@ -180,7 +178,6 @@ def get_diff_movies(user1_movies, user2_movies):
     :param user2_movies:  用户2 评价的电影
     :return: 用户2评价而用户1未评价的电影列表
     '''
-    diff = []
     diff = list(set(user2_movies).difference(set(user1_movies)))
     return diff
 
@@ -201,7 +198,8 @@ def get_sim_top(userId):
     def cmp(s):
         return s['sim']
     top_10 = sorted(sim_list, key= cmp, reverse=True)
-    # print(len(top_10[0:10]), 'top10 => ', top_10[0:10])
+    return top_10[0:10]
+
 
 
 def get_movie_users(itemId):
@@ -314,13 +312,30 @@ def predict(userId, itemId):
         return 0
     return a / b
 
-def complete(userId_A, userId_B):
+def recommend(userId, itemId):
     '''
-    对于用户A和用户B评价的电影并集，补足其中未评价的
-    :param userId_A:
-    :param userId_B:
-    :return:
+    :param userId:
+    :param itemId:
+    :return: 预测用户对电影的评分
     '''
+    rating = user_item_rating.get(userId).get(itemId)
+    if rating is not None :
+        return rating
+    top_10 = get_sim_top(userId)
+    u_average = average_user(get_user_movies(user_item_rating, userId), userId)
+    a = 0
+    b = 0
+    for top in top_10:
+        b += abs(top['sim'])
+        n_i_average = average_user(get_user_movies(user_item_rating, top['userId']))
+        n_i_rating = user_item_rating.get(top['userId']).get(itemId)
+        if n_i_rating is None:
+            n_i_rating = n_i_average
+        a += ( top['sim'] * (n_i_rating - n_i_average) )
+    if b is 0:
+        return u_average
+    rating = u_average + ( a / b )
+    return rating
 
 
 if __name__ == '__main__':
@@ -339,9 +354,10 @@ if __name__ == '__main__':
     # top_10_movie = get_sim_top_item('1') #返回与电影1相似度最高的10个电影
 
     # top_10 = get_sim_top('1') #返回与用户1相似度最高的10个用户
-    sim_1_2 = calcu_user_sim('1', '2') #返回用户1和用户2的相似度
-    print('sim for 1 and 2 -> ', sim_1_2)
-
+    # sim_1_2 = calcu_user_sim('1', '2') #返回用户1和用户2的相似度
+    # print('sim for 1 and 2 -> ', sim_1_2)
+    # print(top_10)
+    # print(len(top_10), 'top10 => ', top_10)
 
     # user1_movies = get_user_movies(user_item_rating, '1') #返回用户1评价过的电影列表
     # user2_movies = get_user_movies(user_item_rating, '2') #返回用户2评价过的电影列表
@@ -351,10 +367,14 @@ if __name__ == '__main__':
     # union_movies = get_union_movies(user1_movies, user2_movies)   #并集
     # user1_average = average_user(user1_movies, '1')   #用户1 评价的电影平均分
     # print('user1 => ', user1_movies)
-    # print('user1 => ', user1_average)
+    # print('user1 =R> ', user1_average)
     # print('user2 => ', user2_movies)
     # print('share => ', share_movies)
     # print('union => ', union_movies)
+    
+    test = recommend('1', '273')
+    print(test)
+
     end = time.clock()
     run_time = round(end - start, 1)
     print('run_time : ', run_time)
